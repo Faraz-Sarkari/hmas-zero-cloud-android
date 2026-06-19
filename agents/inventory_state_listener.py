@@ -1,112 +1,131 @@
 """
-Stock Watcher Agent: Heterogeneous Multi-Agent System (HMAS)
-================================================================
-Responsibility: Tracks a watchlist of specific product pages that
-were previously found "out of stock" by the primary hunter agent.
-Re-checks them on a tighter interval than the main 4x-daily cron,
-and fires an immediate alert the moment any watched product
-transitions from out-of-stock to in-stock.
-
-This agent embodies the "targeted re-acquisition" layer — turning a
-missed opportunity into a recoverable one.
+inventory_state_listener.py — Stock Watcher Agent
+==================================================
+Generic. Monitors a watchlist of URLs for stock status changes.
+Fires alert the moment anything transitions out-of-stock → in-stock.
+All domain values come from config.
 """
+
 import json
 import os
-import sys
 import time
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
+import requests
+from bs4 import BeautifulSoup
+
 from shared.logger import get_logger
 from shared.notifier import send_notification, send_sms
 
-logger = get_logger("stock_watcher")
-
-WATCHLIST_PATH = os.path.expanduser("~/multi-agent-system/shared/watchlist.json")
-CHECK_INTERVAL_SECONDS = 900  # 15 minutes — tighter than main agent's 4x/day
-
-TOR_PROXY = {
-    'http': 'socks5h://127.0.0.1:9050',
-    'https': 'socks5h://127.0.0.1:9050'
-}
+logger = get_logger("inventory_state_listener")
 
 
-def load_watchlist() -> list:
-    """Loads the list of out-of-stock products being tracked for restock."""
-    if not os.path.exists(WATCHLIST_PATH):
+# ------------------------------------------------------------------ #
+#  Watchlist persistence                                              #
+# ------------------------------------------------------------------ #
+
+def load_watchlist(path: str) -> list:
+    path = os.path.expanduser(path)
+    if not os.path.exists(path):
         return []
-    with open(WATCHLIST_PATH, 'r') as f:
+    with open(path, "r") as f:
         return json.load(f)
 
 
-def save_watchlist(watchlist: list) -> None:
-    os.makedirs(os.path.dirname(WATCHLIST_PATH), exist_ok=True)
-    with open(WATCHLIST_PATH, 'w') as f:
+def save_watchlist(path: str, watchlist: list) -> None:
+    path = os.path.expanduser(path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         json.dump(watchlist, f, indent=2)
 
 
-def add_to_watchlist(name: str, url: str, price: int) -> None:
-    """Called externally (or manually) to add a newly out-of-stock product."""
-    watchlist = load_watchlist()
-    entry = {"name": name, "url": url, "price": price, "added": datetime.now().isoformat()}
+def add_to_watchlist(path: str, name: str, url: str, price: float) -> None:
+    watchlist = load_watchlist(path)
     if not any(item["url"] == url for item in watchlist):
-        watchlist.append(entry)
-        save_watchlist(watchlist)
-        logger.info(f"Added to stock watchlist: {name}")
+        watchlist.append({
+            "name": name,
+            "url": url,
+            "price": price,
+            "added": datetime.now().isoformat(),
+        })
+        save_watchlist(path, watchlist)
+        logger.info(f"Added to watchlist: {name}")
 
 
-def fetch_page(url: str) -> str:
+# ------------------------------------------------------------------ #
+#  Stock detection — generic heuristic, overridable via config        #
+# ------------------------------------------------------------------ #
+
+DEFAULT_OOS_MARKERS = ["out of stock", "sold out", "unavailable", "notify me"]
+
+
+def fetch_page(url: str, session: requests.Session) -> str:
     try:
-        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, proxies=TOR_PROXY, timeout=20)
+        response = session.get(url, timeout=20)
         return response.text
     except Exception as e:
         logger.error(f"Failed to fetch {url}: {e}")
         return ""
 
 
-def is_in_stock(html: str) -> bool:
-    """
-    Simple heuristic: if the page contains common out-of-stock markers,
-    treat as unavailable. Otherwise assume available.
-    """
+def is_in_stock(html: str, oos_markers: list) -> bool:
     if not html:
         return False
     lowered = html.lower()
-    out_of_stock_markers = ["out of stock", "sold out", "unavailable", "notify me"]
-    return not any(marker in lowered for marker in out_of_stock_markers)
+    return not any(marker in lowered for marker in oos_markers)
 
 
-def run_watch_cycle() -> None:
-    watchlist = load_watchlist()
+# ------------------------------------------------------------------ #
+#  Core watch cycle                                                   #
+# ------------------------------------------------------------------ #
+
+def run_watch_cycle(config: dict, session: requests.Session) -> None:
+    watchlist_path = config.get("watchlist_path", "~/agent-data/watchlist.json")
+    oos_markers = config.get("oos_markers", DEFAULT_OOS_MARKERS)
+
+    watchlist = load_watchlist(watchlist_path)
     if not watchlist:
         logger.info("Watchlist empty. Nothing to check.")
         return
 
-    still_out_of_stock = []
+    still_out = []
     for item in watchlist:
-        html = fetch_page(item["url"])
-        in_stock = is_in_stock(html)
+        html = fetch_page(item["url"], session)
+        in_stock = is_in_stock(html, oos_markers)
         logger.info(f"{item['name']}: in_stock={in_stock}")
 
         if in_stock:
-            msg = f"RESTOCKED: {item['name']} at ₹{item['price']:,} is back in stock!\nLink: {item['url']}"
+            msg = (
+                f"RESTOCKED: {item['name']} at ₹{item['price']:,} "
+                f"is back in stock!\nLink: {item['url']}"
+            )
             logger.warning(msg)
-            send_notification("Stock Watcher: Restock Alert!", msg)
+            send_notification("Restock Alert!", msg)
             send_sms(msg)
         else:
-            still_out_of_stock.append(item)
+            still_out.append(item)
 
-    save_watchlist(still_out_of_stock)
+    save_watchlist(watchlist_path, still_out)
 
 
-def main() -> None:
-    logger.info("Stock Watcher started. Checking watchlist every %s seconds.", CHECK_INTERVAL_SECONDS)
+def main(config: dict) -> None:
+    interval = config.get("watchlist_interval_seconds", 900)
+    proxy_url = config.get("network", {}).get("tor_proxy", {}).get("http")
+
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    if proxy_url:
+        session.proxies = {"http": proxy_url, "https": proxy_url}
+
+    logger.info("Inventory State Listener started. Interval: %ss.", interval)
     while True:
-        run_watch_cycle()
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        run_watch_cycle(config, session)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
-    main()
+    import yaml
+    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    main(config)
