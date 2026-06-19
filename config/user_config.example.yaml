@@ -1,0 +1,24 @@
+# HMAS User Configuration
+# Copy this file to user_config.yaml and fill in your values.
+# Never commit user_config.yaml — it contains personal settings.
+
+thresholds:
+  budget_ceiling:    0      # Hard upper limit — never alert above this
+  target_price:      0      # Ideal price — triggers a BUY signal
+  warning_threshold: 0      # Soft warning — price is getting close
+
+contact:
+  phone: ""                 # e.g. "+1XXXXXXXXXX" or set ALERT_PHONE_NUMBER env variable
+
+network:
+  use_tor: true
+  tor_proxy:
+    http:  "socks5h://127.0.0.1:9050"
+    https: "socks5h://127.0.0.1:9050"
+
+scheduler:
+  check_times:
+    - "08:00"
+    - "13:00"
+    - "18:00"
+    - "21:00"
