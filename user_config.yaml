@@ -57,3 +57,6 @@ monitored_domains:
   - "www.amazon.in"
   - "www.flipkart.com"
   - "www.nehruplacemarket.com"
+
+missed_deals_path: "~/agent-data/missed_deals.json"
+reacquisition_interval_seconds: 900
