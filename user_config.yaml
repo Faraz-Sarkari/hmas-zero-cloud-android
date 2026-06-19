@@ -1,0 +1,20 @@
+thresholds:
+  budget_ceiling:    60000
+  target_price:      55000
+  warning_threshold: 57000
+
+contact:
+  phone: ""
+
+network:
+  use_tor: true
+  tor_proxy:
+    http:  "socks5h://127.0.0.1:9050"
+    https: "socks5h://127.0.0.1:9050"
+
+scheduler:
+  check_times:
+    - "08:00"
+    - "13:00"
+    - "18:00"
+    - "21:00"
