@@ -56,12 +56,17 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 3. Set your alert phone number as an environment variable:
 4. Each agent can currently be run individually, e.g.:
 5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration
-
+6. To start all 6 agents at once, run: `bash ops/start_all_agents.sh`
 
 Note: this is a working proof-of-concept architecture. A unified launcher to start all 6 agents together is a planned next step.
 
+## Reporting & Alerts
 
+All reporting happens on-device — no external services, no cloud dashboards.
 
+- **Routine checks:** after each scheduled price check, a standard Android push notification and SMS are sent via Termux:API, summarizing current prices and stock status across all 9 platforms.
+- **Emergency mode:** if any tracked price drops to or below the target budget, the system switches to high-priority alerting — sending a notification and SMS every 2 minutes for 20 minutes straight, with stronger vibration patterns, to guarantee the alert isn't missed.
+- All communication uses Termux:API's native `termux-notification` and `termux-sms-send` commands — no third-party messaging APIs, no recurring costs.
 
 ## Stack
 
