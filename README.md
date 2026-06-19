@@ -54,7 +54,7 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 1. Install Termux and Termux:API and Termux:Boot from F-Droid (Google Play versions are not supported)
 2. Clone this repository and install dependencies:
 3. Set your alert phone number as an environment variable:
-4. Each agent can currently be run individually, e.g.:
+4. To start all agents at once, run: `bash ops/start_all_agents.sh` — or run any single agent individually, e.g.:
 5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration
 6. To start all 6 agents at once, run: `bash ops/start_all_agents.sh`
 
