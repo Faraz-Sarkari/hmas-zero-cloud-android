@@ -45,3 +45,15 @@ monitored_processes:
   - name: "Tor"
     keyword: "tor"
     down_message: "Tor is down. Scraping is halted."
+
+network_check_interval_seconds: 1800
+monitored_domains:
+  - "www.primeabgb.com"
+  - "mdcomputers.in"
+  - "www.vedantcomputers.com"
+  - "elitehubs.com"
+  - "famberzbuilt.in"
+  - "www.smartprix.com"
+  - "www.amazon.in"
+  - "www.flipkart.com"
+  - "www.nehruplacemarket.com"
