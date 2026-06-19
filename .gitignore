@@ -218,3 +218,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 config/user_config.yaml
+config/user_config.yaml
