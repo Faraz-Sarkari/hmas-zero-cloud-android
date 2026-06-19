@@ -1,6 +1,6 @@
 # HMAS — Zero Cloud. Zero Budget. Just Architecture.
 
-A production-grade Heterogeneous Multi-Agent System built entirely on an Android device using Python and Termux — no cloud infrastructure, no laptop, no API costs.
+A production-minded Heterogeneous Multi-Agent System built entirely on an Android device using Python and Termux — no cloud infrastructure, no laptop, no API costs.
 
 ## What This Is
 
@@ -18,14 +18,16 @@ Retail price data is volatile. Manual monitoring is impossible at scale. Cloud s
 
 Six agents. Each independently responsible. All communicating through shared state.
 
-| Agent | Responsibility |
-|---|---|
-| **Data Extraction Agent** | Syncs catalog data across 9 retail platforms every 4 hours via distributed egress routing |
-| **Predictive Analytics Engine** | Runs a local linear regression model over historical price vectors to forecast target baseline |
-| **Decision Layer** | Synthesizes pricing trends into automated BUY/WAIT recommendations backed by telemetry |
-| **Network Observability Agent** | Watches process health for data worker and background interfaces, triggering recovery on silent hangs |
-| **Inventory State Listener** | Monitors high-volatility out-of-stock SKUs on a high-frequency polling thread, firing instant notifications on allocation |
-| **Reacquisition Agent** | Targets and reacquires dropped or failed data connections based on decision layer signals |
+See [`architecture-diagram.svg`](architecture-diagram.svg) for the full visual, and [`PRD.md`](PRD.md) for the requirements and design rationale behind each choice below.
+
+| Agent                           | Responsibility                                                                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------|
+| **Data Extraction Agent**       | Syncs catalog data across 9 retail platforms every 4 hours via distributed egress routing                                 |
+| **Predictive Analytics Engine** | Runs a local linear regression model over historical price vectors to forecast target baseline                            |
+| **Decision Layer**              | Synthesizes pricing trends into automated BUY/WAIT recommendations backed by telemetry                                    |
+| **Network Observability Agent** | Watches process health for data worker and background interfaces, triggering recovery on silent hangs                     |
+| **Inventory State Listener**    | Monitors high-volatility out-of-stock SKUs on a high-frequency polling thread, firing instant notifications on allocation  |
+| **Reacquisition Agent**         | Targets and reacquires dropped or failed data connections based on decision layer signals                                 |
 
 ## For Non-Technical Readers
 
@@ -51,14 +53,26 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 
 ## How to Run
 
-1. Install Termux and Termux:API and Termux:Boot from F-Droid (Google Play versions are not supported)
+1. Install Termux, Termux:API, and Termux:Boot from F-Droid (Google Play versions are not supported).
 2. Clone this repository and install dependencies:
+   ```bash
+   git clone https://github.com/Faraz-Sarkari/hmas-zero-cloud-android.git
+   cd hmas-zero-cloud-android
+   pip install -r requirements.txt
+   ```
 3. Set your alert phone number as an environment variable:
-4. To start all agents at once, run: `bash ops/start_all_agents.sh` — or run any single agent individually, e.g.:
-5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration
-6. To start all 6 agents at once, run: `bash ops/start_all_agents.sh`
-
-Note: this is a working proof-of-concept architecture. A unified launcher to start all 6 agents together is a planned next step.
+   ```bash
+   export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
+   ```
+4. To start all 6 agents at once:
+   ```bash
+   bash ops/start_all_agents.sh
+   ```
+   Or run any single agent individually, e.g.:
+   ```bash
+   python agents/data_extraction_agent.py
+   ```
+5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration.
 
 ## Reporting & Alerts
 
@@ -78,11 +92,11 @@ All reporting happens on-device — no external services, no cloud dashboards.
 
 ## Status
 
-Documentation live. Architecture complete. Full source code available in this repository.
+Architecture complete. All 6 agents implemented and pushed. Documentation live, including a full PRD and architecture diagram. Not yet load-tested or run unattended for an extended period — see `PRD.md` for open items.
 
 ## Why This Matters
 
-Edge AI is not a future concept — it's already here. This project demonstrates that production-grade autonomous systems can be designed, deployed, and maintained on hardware that fits in your pocket, with no dependency on cloud providers or expensive infrastructure.
+Edge AI is not a future concept — it's already here. This project demonstrates that production-minded autonomous systems can be designed, deployed, and maintained on hardware that fits in your pocket, with no dependency on cloud providers or expensive infrastructure.
 
 That has implications for emerging markets, resource-constrained organizations, and anyone building AI systems that need to operate where the internet is unreliable or cloud costs are prohibitive.
 
