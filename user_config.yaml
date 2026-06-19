@@ -1,13 +1,10 @@
-cat > config/user_config.yaml << 'EOF'
-# Personal config — DO NOT COMMIT (already in .gitignore)
-
 thresholds:
   budget_ceiling:    60000
   target_price:      55000
   warning_threshold: 57000
 
 contact:
-  phone: ""                 # leave blank if using ALERT_PHONE_NUMBER env variable
+  phone: ""
 
 product:
   name: "RTX 5060 Ti 16GB"
@@ -26,4 +23,8 @@ scheduler:
     - "13:00"
     - "18:00"
     - "21:00"
-EOF
+
+advisor:
+  advisory_hour: 10
+  prediction_interval_seconds: 3600
+  checks_per_day: 4
