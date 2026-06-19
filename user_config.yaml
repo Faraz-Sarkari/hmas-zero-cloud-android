@@ -36,3 +36,12 @@ oos_markers:
   - "sold out"
   - "unavailable"
   - "notify me"
+
+monitor_interval_seconds: 1800
+monitored_processes:
+  - name: "Price Hunter"
+    keyword: "data_extraction_agent.py"
+    down_message: "Price hunting agent is not running. Prices are not being monitored."
+  - name: "Tor"
+    keyword: "tor"
+    down_message: "Tor is down. Scraping is halted."
