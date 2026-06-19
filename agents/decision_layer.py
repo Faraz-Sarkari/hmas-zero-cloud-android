@@ -1,88 +1,117 @@
 """
-Buy/Wait Advisor Agent: Heterogeneous Multi-Agent System (HMAS)
-==================================================================
-Responsibility: Acts as the decision/reasoning layer of the system.
-Synthesizes the latest price data and trend direction (price rising,
-falling, or flat) into a clear, actionable BUY or WAIT recommendation
-for the user, delivered once per day.
+decision_layer.py — Buy/Wait Advisor Agent
+===========================================
+Generic decision/reasoning layer. Knows nothing about GPUs, prices,
+or any specific domain.
 
-This agent embodies the "rules engine / decision logic" layer.
+Reads price history from a log file, applies configurable thresholds,
+and produces a BUY or WAIT recommendation once per day.
+
+All domain-specific values (target price, log path, advisory hour)
+come from plugin_config passed in at runtime.
 """
+
 import json
 import os
 import sys
 import time
 from datetime import datetime
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
 from shared.logger import get_logger
 from shared.notifier import send_notification, send_sms
 
-logger = get_logger("buy_wait_advisor")
+logger = get_logger("decision_layer")
 
-PRIMARY_PRICE_LOG = os.path.expanduser("~/rtx-agent/data/prices.json")
-TARGET_PRICE = 55000
-BUDGET_CEILING = 60000
-ADVISORY_HOUR = 10  # Sends advisory once daily around 10 AM
 CHECK_INTERVAL_SECONDS = 1800
 
 
-def load_price_history() -> list:
-    if not os.path.exists(PRIMARY_PRICE_LOG):
+def load_price_history(log_path: str) -> list:
+    log_path = os.path.expanduser(log_path)
+    if not os.path.exists(log_path):
         return []
-    with open(PRIMARY_PRICE_LOG, 'r') as f:
+    with open(log_path, "r") as f:
         return json.load(f)
 
 
-def compute_recommendation(data: list) -> str:
+def compute_recommendation(data: list, target: float, item_label: str = "item") -> str:
     """
-    Applies simple decision rules over recent price history to produce
-    a human-readable BUY or WAIT recommendation with reasoning.
+    Applies decision rules over recent price history.
+    Returns a human-readable BUY or WAIT recommendation.
+    No domain knowledge — works for any numeric price series.
     """
     if len(data) < 5:
         return "WAIT — Not enough price history yet to form a confident recommendation."
 
     recent = data[-10:] if len(data) >= 10 else data
-    prices = [d['price'] for d in recent]
+    prices = [d["price"] for d in recent]
     latest = prices[-1]
     average = sum(prices) / len(prices)
     minimum = min(prices)
 
-    if latest <= TARGET_PRICE:
-        return f"BUY NOW — Current price ₹{latest:,} has hit your ₹{TARGET_PRICE:,} target."
+    if latest <= target:
+        return (
+            f"BUY NOW — Current price ₹{latest:,} has hit your "
+            f"₹{target:,} target for {item_label}."
+        )
 
     if latest <= average * 0.97:
-        return (f"CONSIDER BUYING — Current price ₹{latest:,} is meaningfully below "
-                f"the recent average of ₹{int(average):,}. This may be a local dip.")
+        return (
+            f"CONSIDER BUYING — Current price ₹{latest:,} is meaningfully "
+            f"below the recent average of ₹{int(average):,}. Possible local dip."
+        )
 
     if latest == minimum:
-        return (f"CONSIDER BUYING — Current price ₹{latest:,} is the lowest seen "
-                f"in recent history. Diminishing returns to waiting further.")
+        return (
+            f"CONSIDER BUYING — ₹{latest:,} is the lowest price seen recently "
+            f"for {item_label}. Diminishing returns to waiting further."
+        )
 
-    return (f"WAIT — Current price ₹{latest:,} is close to the recent average of "
-            f"₹{int(average):,}. No strong signal to act yet.")
+    return (
+        f"WAIT — Current price ₹{latest:,} is near the recent average of "
+        f"₹{int(average):,}. No strong signal to act yet."
+    )
 
 
-def run_advisory_cycle() -> None:
-    data = load_price_history()
-    recommendation = compute_recommendation(data)
+def run_advisory_cycle(config: dict) -> None:
+    log_path = config.get("price_log", "~/agent-data/prices.json")
+    target = config.get("target", 0)
+    item_label = config.get("item_label", "item")
+
+    data = load_price_history(log_path)
+    recommendation = compute_recommendation(data, target, item_label)
 
     logger.info(f"Daily advisory: {recommendation}")
     send_notification("Buy/Wait Advisor", recommendation)
     send_sms(recommendation)
 
 
-def main() -> None:
-    logger.info("Buy/Wait Advisor started. Daily recommendation around %s:00.", ADVISORY_HOUR)
-    last_sent_date = None
+def main(config: dict) -> None:
+    advisory_hour = config.get("advisory_hour", 10)
+    item_label = config.get("item_label", "item")
 
+    logger.info(
+        "Decision Layer started. Daily recommendation at %s:00 for %s.",
+        advisory_hour,
+        item_label,
+    )
+
+    last_sent_date = None
     while True:
         now = datetime.now()
-        if now.hour == ADVISORY_HOUR and now.date() != last_sent_date:
-            run_advisory_cycle()
+        if now.hour == advisory_hour and now.date() != last_sent_date:
+            run_advisory_cycle(config)
             last_sent_date = now.date()
         time.sleep(CHECK_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":
-    main()
+    import yaml
+
+    config_path = os.path.join(
+        os.path.dirname(__file__),
+        "../examples/retail_price_monitor/plugin_config.yaml",
+    )
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    main(config)
