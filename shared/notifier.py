@@ -1,12 +1,9 @@
 """
 Shared notification utility for sending Android push notifications and SMS
-across all agents in the multi-agent system.
+across all agents in the HMAS framework.
 """
 import subprocess
-import sys
-import os
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
 from config.settings import CONTACT_NUMBER
 
 
@@ -23,4 +20,6 @@ def send_notification(title: str, message: str, priority: str = "high") -> None:
 
 def send_sms(message: str) -> None:
     """Sends an SMS to the configured contact number via Termux:API."""
+    if not CONTACT_NUMBER:
+        return
     subprocess.Popen(['termux-sms-send', '-n', CONTACT_NUMBER, message])

@@ -10,6 +10,14 @@ thresholds:
 contact:
   phone: ""                 # e.g. "+1XXXXXXXXXX" or set ALERT_PHONE_NUMBER env variable
 
+product:
+  name: "Target Item"       # used in alert messages, e.g. "RTX 5060 Ti 16GB"
+
+sources_module: "examples.retail_price_monitor.sources"
+# Which scraper plugin to run. Must be an importable module exposing
+# get_checkers(). Swap this to point at your own plugin for a different
+# product/market.
+
 network:
   use_tor: true
   tor_proxy:

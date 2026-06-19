@@ -1,0 +1,20 @@
+item_label: "RTX 5060 Ti 16GB"
+budget: 60000
+target: 55000
+filter_keyword: "16GB"
+filter_keyword_2: "5060 Ti"
+price_log: "~/rtx-agent/data/prices.json"
+proxy_url: "socks5h://127.0.0.1:9050"
+schedule:
+  - "08:00"
+  - "13:00"
+  - "18:00"
+  - "21:00"
+advisory_hour: 10
+tiers:
+  - max_offset: 0
+    label: "AT TARGET — BUY NOW!"
+  - max_offset: 2000
+    label: "VERY CLOSE to target"
+  - max_offset: 5000
+    label: "Getting close"

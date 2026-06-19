@@ -1,36 +1,27 @@
 """
-Price Predictor Agent: Heterogeneous Multi-Agent System (HMAS)
-================================================================
-Responsibility: Reads historical price data collected by the primary
-hunter agent, applies a linear regression trend model, and forecasts
-the estimated date the target price will be reached.
+Predictive Analytics Engine: HMAS Framework
+============================================
+Responsibility: Reads historical price data logged by the Data Extraction
+Agent, applies a linear regression trend model, and forecasts the
+estimated date the configured target price will be reached.
 
-This agent embodies the "data science / predictive analytics" layer
-of the system.
+This agent contains no domain-specific logic — all thresholds, paths, and
+schedule assumptions come from config/user_config.yaml via config/settings.
 """
-import json
-import os
-import sys
 import time
-from datetime import datetime, timedelta
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
+from config import settings
 from shared.logger import get_logger
 from shared.notifier import send_notification
+from shared.price_history import load_price_history
 
-logger = get_logger("price_predictor")
+logger = get_logger("predictive_analytics_engine")
 
-PRIMARY_PRICE_LOG = os.path.expanduser("~/rtx-agent/data/prices.json")
-TARGET_PRICE = 55000
-CHECK_INTERVAL_SECONDS = 3600  # 1 hour
+CHECK_INTERVAL_SECONDS = 3600  # how often this agent re-analyzes the trend
 
-
-def load_price_history() -> list:
-    """Loads price history logged by the primary hunter agent."""
-    if not os.path.exists(PRIMARY_PRICE_LOG):
-        return []
-    with open(PRIMARY_PRICE_LOG, 'r') as f:
-        return json.load(f)
+# Derive how many observations are logged per day from the configured
+# schedule, instead of assuming a fixed number of daily checks.
+OBSERVATIONS_PER_DAY = max(len(settings.CHECK_TIMES), 1)
 
 
 def compute_linear_trend(data: list) -> dict:
@@ -77,11 +68,14 @@ def estimate_days_to_target(trend: dict) -> str:
     if slope >= 0:
         return "Price trend is flat or rising. No reliable forecast to target."
 
-    observations_needed = (latest_price - TARGET_PRICE) / abs(slope)
-    # Roughly 4 observations logged per day (4x daily checks)
-    days_needed = round(observations_needed / 4, 1)
+    observations_needed = (latest_price - settings.TARGET_PRICE) / abs(slope)
+    days_needed = round(observations_needed / OBSERVATIONS_PER_DAY, 1)
 
-    return f"Projected to reach ₹{TARGET_PRICE:,} in approximately {days_needed} days at current trend."
+    return (
+        f"{settings.PRODUCT_NAME}: projected to reach target price "
+        f"({settings.TARGET_PRICE}) in approximately {days_needed} days "
+        f"at current trend."
+    )
 
 
 def run_prediction_cycle() -> None:
@@ -92,11 +86,11 @@ def run_prediction_cycle() -> None:
     logger.info(f"Trend analysis: {trend}")
     logger.info(f"Forecast: {forecast}")
 
-    send_notification("Price Predictor Update", forecast)
+    send_notification("Predictive Analytics Update", forecast)
 
 
 def main() -> None:
-    logger.info("Price Predictor started. Analyzing trend every %s seconds.", CHECK_INTERVAL_SECONDS)
+    logger.info("Predictive Analytics Engine started. Analyzing trend every %s seconds.", CHECK_INTERVAL_SECONDS)
     while True:
         run_prediction_cycle()
         time.sleep(CHECK_INTERVAL_SECONDS)
