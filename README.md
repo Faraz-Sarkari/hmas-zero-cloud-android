@@ -47,6 +47,7 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 - Filtering telemetry anomalies — ghost stock and stale caching — to prevent false positives
 - Localized Termux:API hardware sandbox permissions
 - Strict fail-safe over fail-open strategy during routing drops
+- Self-healing process supervision via a watchdog loop that auto-restarts any crashed agent and survives full device reboots
 
 ## Stack
 
