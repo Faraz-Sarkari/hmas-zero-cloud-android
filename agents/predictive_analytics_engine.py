@@ -1,106 +1,94 @@
 """
-Price Predictor Agent: Heterogeneous Multi-Agent System (HMAS)
-================================================================
-Responsibility: Reads historical price data collected by the primary
-hunter agent, applies a linear regression trend model, and forecasts
-the estimated date the target price will be reached.
-
-This agent embodies the "data science / predictive analytics" layer
-of the system.
+predictive_analytics_engine.py — Price Predictor Agent
+=======================================================
+Generic. Reads price history, runs linear regression,
+forecasts when target price will be reached.
+All domain values come from config.
 """
+
 import json
 import os
-import sys
 import time
-from datetime import datetime, timedelta
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
 from shared.logger import get_logger
 from shared.notifier import send_notification
 
-logger = get_logger("price_predictor")
-
-PRIMARY_PRICE_LOG = os.path.expanduser("~/rtx-agent/data/prices.json")
-TARGET_PRICE = 55000
-CHECK_INTERVAL_SECONDS = 3600  # 1 hour
+logger = get_logger("predictive_analytics_engine")
 
 
-def load_price_history() -> list:
-    """Loads price history logged by the primary hunter agent."""
-    if not os.path.exists(PRIMARY_PRICE_LOG):
+def load_price_history(log_path: str) -> list:
+    log_path = os.path.expanduser(log_path)
+    if not os.path.exists(log_path):
         return []
-    with open(PRIMARY_PRICE_LOG, 'r') as f:
+    with open(log_path, "r") as f:
         return json.load(f)
 
 
 def compute_linear_trend(data: list) -> dict:
-    """
-    Computes a simple linear regression (least squares) over price vs.
-    time index, returning slope (price change per data point) and the
-    most recent observed price.
-    """
     n = len(data)
     if n < 3:
         return {"status": "insufficient_data", "points": n}
 
-    prices = [d['price'] for d in data]
-    x_values = list(range(n))
-
-    x_mean = sum(x_values) / n
+    prices = [d["price"] for d in data]
+    x = list(range(n))
+    x_mean = sum(x) / n
     y_mean = sum(prices) / n
 
-    numerator = sum((x_values[i] - x_mean) * (prices[i] - y_mean) for i in range(n))
-    denominator = sum((x_values[i] - x_mean) ** 2 for i in range(n))
+    num = sum((x[i] - x_mean) * (prices[i] - y_mean) for i in range(n))
+    den = sum((x[i] - x_mean) ** 2 for i in range(n))
 
-    if denominator == 0:
+    if den == 0:
         return {"status": "no_variance", "points": n}
-
-    slope = numerator / denominator
-    latest_price = prices[-1]
 
     return {
         "status": "ok",
-        "slope_per_observation": slope,
-        "latest_price": latest_price,
-        "points": n
+        "slope": num / den,
+        "latest_price": prices[-1],
+        "points": n,
     }
 
 
-def estimate_days_to_target(trend: dict) -> str:
-    """Converts the regression slope into a human-readable forecast."""
+def forecast(trend: dict, target: float, checks_per_day: int, item_label: str) -> str:
     if trend["status"] != "ok":
-        return f"Insufficient data for prediction ({trend['points']} points logged)."
+        return f"Insufficient data ({trend['points']} points logged)."
 
-    slope = trend["slope_per_observation"]
-    latest_price = trend["latest_price"]
+    slope = trend["slope"]
+    latest = trend["latest_price"]
 
     if slope >= 0:
-        return "Price trend is flat or rising. No reliable forecast to target."
+        return f"{item_label}: Price is flat or rising. No reliable forecast."
 
-    observations_needed = (latest_price - TARGET_PRICE) / abs(slope)
-    # Roughly 4 observations logged per day (4x daily checks)
-    days_needed = round(observations_needed / 4, 1)
+    observations_needed = (latest - target) / abs(slope)
+    days = round(observations_needed / checks_per_day, 1)
 
-    return f"Projected to reach ₹{TARGET_PRICE:,} in approximately {days_needed} days at current trend."
+    return f"{item_label}: Projected to reach ₹{target:,} in ~{days} days at current trend."
 
 
-def run_prediction_cycle() -> None:
-    data = load_price_history()
+def run_prediction_cycle(config: dict) -> None:
+    log_path = config.get("price_log", "~/agent-data/prices.json")
+    target = config.get("target", 0)
+    item_label = config.get("item_label", "item")
+    checks_per_day = config.get("checks_per_day", 4)
+
+    data = load_price_history(log_path)
     trend = compute_linear_trend(data)
-    forecast = estimate_days_to_target(trend)
+    message = forecast(trend, target, checks_per_day, item_label)
 
-    logger.info(f"Trend analysis: {trend}")
-    logger.info(f"Forecast: {forecast}")
-
-    send_notification("Price Predictor Update", forecast)
+    logger.info(message)
+    send_notification("Price Predictor", message)
 
 
-def main() -> None:
-    logger.info("Price Predictor started. Analyzing trend every %s seconds.", CHECK_INTERVAL_SECONDS)
+def main(config: dict) -> None:
+    interval = config.get("prediction_interval_seconds", 3600)
+    logger.info("Predictive Analytics Engine started. Interval: %ss.", interval)
     while True:
-        run_prediction_cycle()
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        run_prediction_cycle(config)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
-    main()
+    import yaml
+    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    main(config)
