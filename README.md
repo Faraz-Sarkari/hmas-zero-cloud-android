@@ -49,6 +49,20 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 - Strict fail-safe over fail-open strategy during routing drops
 - Self-healing process supervision via a watchdog loop that auto-restarts any crashed agent and survives full device reboots
 
+## How to Run
+
+1. Install Termux and Termux:API and Termux:Boot from F-Droid (Google Play versions are not supported)
+2. Clone this repository and install dependencies:
+3. Set your alert phone number as an environment variable:
+4. Each agent can currently be run individually, e.g.:
+5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration
+
+
+Note: this is a working proof-of-concept architecture. A unified launcher to start all 6 agents together is a planned next step.
+
+
+
+
 ## Stack
 
 - **Language:** Python
