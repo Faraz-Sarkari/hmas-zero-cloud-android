@@ -1,10 +1,18 @@
+cat > config/user_config.yaml << 'EOF'
+# Personal config — DO NOT COMMIT (already in .gitignore)
+
 thresholds:
   budget_ceiling:    60000
   target_price:      55000
   warning_threshold: 57000
 
 contact:
-  phone: ""
+  phone: ""                 # leave blank if using ALERT_PHONE_NUMBER env variable
+
+product:
+  name: "RTX 5060 Ti 16GB"
+
+sources_module: "examples.retail_price_monitor.sources"
 
 network:
   use_tor: true
@@ -18,3 +26,4 @@ scheduler:
     - "13:00"
     - "18:00"
     - "21:00"
+EOF
