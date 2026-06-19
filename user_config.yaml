@@ -28,3 +28,11 @@ advisor:
   advisory_hour: 10
   prediction_interval_seconds: 3600
   checks_per_day: 4
+
+watchlist_path: "~/agent-data/watchlist.json"
+watchlist_interval_seconds: 900
+oos_markers:
+  - "out of stock"
+  - "sold out"
+  - "unavailable"
+  - "notify me"
