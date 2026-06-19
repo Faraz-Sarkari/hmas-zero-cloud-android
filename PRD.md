@@ -2,7 +2,9 @@
 ### Heterogeneous Multi-Agent System for Zero-Cloud Retail Price Monitoring
 
 **Author:** Faraz Sarkari
+
 **Status:** Architecture complete · all 6 agents implemented · self-healing supervision live
+
 **Repo:** github.com/faraz-sarkari/hmas-zero-cloud-android
 
 ---
