@@ -1,97 +1,77 @@
 """
-Network Monitor Agent: Heterogeneous Multi-Agent System (HMAS)
-==================================================================
-Responsibility: Monitors the health of the network/infrastructure
-layer that the entire system depends on — Tor SOCKS proxy
-availability, general internet connectivity, and reachability of
-each of the 9 target e-commerce domains. Surfaces actionable alerts
-when infrastructure degrades, helping explain "why no deals were
-found" (site down vs genuinely no deal).
-
-This agent embodies the "infrastructure / DevOps observability" layer.
+network_observability_agent.py — Network Monitor
+=================================================
+Generic. Checks Tor proxy + reachability of any configured domains.
+All domains and proxy settings come from config.
 """
+
 import socket
 import time
-import sys
 import os
+
 import requests
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
 from shared.logger import get_logger
 from shared.notifier import send_notification
 
-logger = get_logger("network_monitor")
-
-CHECK_INTERVAL_SECONDS = 1800  # 30 minutes
-
-TARGET_DOMAINS = [
-    "www.primeabgb.com",
-    "mdcomputers.in",
-    "www.vedantcomputers.com",
-    "elitehubs.com",
-    "famberzbuilt.in",
-    "www.smartprix.com",
-    "www.amazon.in",
-    "www.flipkart.com",
-    "www.nehruplacemarket.com",
-]
-
-TOR_PROXY = {
-    'http': 'socks5h://127.0.0.1:9050',
-    'https': 'socks5h://127.0.0.1:9050'
-}
+logger = get_logger("network_observability_agent")
 
 
-def is_tor_alive() -> bool:
-    """Checks if the Tor SOCKS proxy port is open and accepting connections."""
+def is_tor_alive(host: str = "127.0.0.1", port: int = 9050) -> bool:
     try:
-        s = socket.create_connection(("127.0.0.1", 9050), timeout=3)
+        s = socket.create_connection((host, port), timeout=3)
         s.close()
         return True
     except Exception:
         return False
 
 
-def check_domain_reachable(domain: str) -> bool:
-    """Checks if a target domain is reachable through Tor."""
+def check_domain(domain: str, proxies: dict) -> bool:
     try:
-        response = requests.get(f"https://{domain}", proxies=TOR_PROXY, timeout=10)
-        return response.status_code < 500
+        r = requests.get(f"https://{domain}", proxies=proxies, timeout=10)
+        return r.status_code < 500
     except Exception:
         return False
 
 
-def run_network_check() -> None:
-    tor_status = is_tor_alive()
-    logger.info(f"Tor proxy reachable: {tor_status}")
+def run_network_check(config: dict) -> None:
+    proxy_cfg = config.get("network", {}).get("tor_proxy", {})
+    use_tor = config.get("network", {}).get("use_tor", False)
+    domains = config.get("monitored_domains", [])
 
-    if not tor_status:
-        msg = "Network Monitor: Tor proxy is DOWN. All scraping is currently blocked (fail-safe, no real-IP fallback)."
-        logger.warning(msg)
-        send_notification("Network Monitor: Tor Down", msg)
-        return
+    if use_tor:
+        alive = is_tor_alive()
+        logger.info(f"Tor alive: {alive}")
+        if not alive:
+            msg = "Network Monitor: Tor is DOWN. Scraping is blocked."
+            logger.warning(msg)
+            send_notification("Network Monitor: Tor Down", msg)
+            return
+        proxies = proxy_cfg
+    else:
+        proxies = {}
 
-    unreachable = []
-    for domain in TARGET_DOMAINS:
-        reachable = check_domain_reachable(domain)
-        logger.info(f"{domain} reachable: {reachable}")
-        if not reachable:
-            unreachable.append(domain)
+    unreachable = [d for d in domains if not check_domain(d, proxies)]
 
     if unreachable:
-        msg = "Sites currently unreachable: " + ", ".join(unreachable)
+        msg = "Unreachable sites: " + ", ".join(unreachable)
         logger.warning(msg)
-        send_notification("Network Monitor: Site(s) Down", msg)
+        send_notification("Network Monitor: Sites Down", msg)
     else:
-        logger.info("All 9 target domains reachable. Network healthy.")
+        logger.info("All domains reachable. Network healthy.")
 
 
-def main() -> None:
-    logger.info("Network Monitor started. Checking infra every %s seconds.", CHECK_INTERVAL_SECONDS)
+def main(config: dict) -> None:
+    interval = config.get("network_check_interval_seconds", 1800)
+    logger.info("Network Observability Agent started. Interval: %ss.", interval)
     while True:
-        run_network_check()
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        run_network_check(config)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
-    main()
+    import yaml
+    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    main(config)
