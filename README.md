@@ -58,7 +58,7 @@ No human involvement needed once it's running. No cloud bill. No laptop left on 
 
 ## Status
 
-Documentation live. Architecture complete. Code release coming soon.
+Documentation live. Architecture complete. Full source code available in this repository.
 
 ## Why This Matters
 
