@@ -1,135 +1,179 @@
 """
-Generic Data Extraction Agent — HMAS Framework
+data_extraction_agent.py — Generic Data Extraction Agent
+=========================================================
+Knows nothing about GPUs, retail sites, or any specific domain.
 
-This agent contains NO domain-specific logic. It periodically runs a set of
-"source checkers" supplied by a pluggable module (configured via
-`sources_module` in config/user_config.yaml), logs every price point it
-sees, and fires notifications/SMS/emergency-alerts when a result is at or
-below your configured budget/target.
+Responsibilities:
+  - Load scraper plugins dynamically from a plugin folder
+  - Make HTTP requests (with optional proxy support)
+  - Log raw results to a price/data log
+  - Schedule recurring checks
+  - Hand results to the Decision Layer
 
-Each checker is a zero-argument callable that returns a list of
-(name, price, site, url) tuples for every matching item it found —
-regardless of price. Filtering against budget/target happens here, once,
-so every checker can stay dumb and simple.
-
-See examples/retail_price_monitor/sources.py for a reference plugin.
+All domain-specific logic (what to scrape, how to parse, what to filter)
+lives in the plugin's scrapers/ folder.
 """
-import importlib
-import subprocess
+
+import importlib.util
+import json
+import os
+import schedule
 import time
 from datetime import datetime
+from typing import Callable, List, Optional, Tuple
 
-import schedule
-
-from config import settings
-from shared.price_history import load_price_history, log_price
-
-# ---------------------------------------------------------------------------
-# Load the pluggable source-checker module named in user_config.yaml
-# ---------------------------------------------------------------------------
-_sources_module = importlib.import_module(settings.SOURCES_MODULE)
-CHECKERS = _sources_module.get_checkers()
+import requests
 
 
-def notify(title, message):
-    subprocess.Popen([
-        'termux-notification', '--title', title, '--content', message,
-        '--priority', 'high', '--vibrate', '500,200,500'
-    ])
+# ------------------------------------------------------------------ #
+#  HTTP helper — generic, proxy-aware                                 #
+# ------------------------------------------------------------------ #
+
+def build_session(proxy_url: Optional[str] = None, user_agent: str = "Mozilla/5.0") -> requests.Session:
+    session = requests.Session()
+    session.headers.update({"User-Agent": user_agent})
+    if proxy_url:
+        session.proxies = {"http": proxy_url, "https": proxy_url}
+    return session
 
 
-def send_sms(message):
-    if not settings.CONTACT_NUMBER:
-        return
-    subprocess.Popen(['termux-sms-send', '-n', settings.CONTACT_NUMBER, message])
+def fetch(session: requests.Session, url: str, timeout: int = 20) -> Optional[requests.Response]:
+    try:
+        response = session.get(url, timeout=timeout)
+        response.raise_for_status()
+        return response
+    except Exception as e:
+        print(f"[fetch] Error fetching {url}: {e}")
+        return None
 
 
-def emergency_alert(msg):
-    for _ in range(10):
-        subprocess.Popen([
-            'termux-notification', '--id', '999',
-            '--title', f'{settings.PRODUCT_NAME} TARGET ALERT!',
-            '--content', msg, '--priority', 'high',
-            '--vibrate', '1000,500,1000,500,1000', '--ongoing'
-        ])
-        if settings.CONTACT_NUMBER:
-            subprocess.Popen([
-                'termux-sms-send', '-n', settings.CONTACT_NUMBER,
-                f'{settings.PRODUCT_NAME} UNDER TARGET! CHECK NOW!\n' + msg
-            ])
-        time.sleep(120)
+# ------------------------------------------------------------------ #
+#  Price / data logging — generic                                     #
+# ------------------------------------------------------------------ #
+
+def log_result(log_path: str, price: float, source: str, extra: dict = None):
+    """Append a result entry to the JSON log."""
+    log_path = os.path.expanduser(log_path)
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    data = []
+    if os.path.exists(log_path):
+        with open(log_path, "r") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = []
+
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "price": price,
+        "source": source,
+    }
+    if extra:
+        entry.update(extra)
+
+    data.append(entry)
+
+    with open(log_path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
-def analyze_deal(price):
-    if price <= settings.TARGET_PRICE:
-        return f"BUY NOW — at or under target ({settings.TARGET_PRICE})!"
-    elif price <= settings.WARNING_THRESHOLD:
-        return "VERY CLOSE to target!"
-    else:
-        return f"{price - settings.TARGET_PRICE} away from target"
+# ------------------------------------------------------------------ #
+#  Plugin loader — dynamically imports scraper modules                #
+# ------------------------------------------------------------------ #
 
+def load_scrapers(plugin_dir: str) -> List[Callable]:
+    """
+    Scans plugin_dir/scrapers/ for Python files.
+    Each file must expose a `scrape(session, config) -> list` function.
+    Returns a list of those callables.
+    """
+    scrapers_dir = os.path.join(plugin_dir, "scrapers")
+    if not os.path.isdir(scrapers_dir):
+        print(f"[loader] No scrapers/ folder found in {plugin_dir}")
+        return []
 
-def predict_target_date():
-    data = load_price_history()
-    if len(data) < 2:
-        return "Need more data points"
-    prices = [d['price'] for d in data]
-    avg_drop = (prices[0] - prices[-1]) / len(prices)
-    if avg_drop <= 0:
-        return "Price not dropping yet"
-    days_needed = int((prices[-1] - settings.TARGET_PRICE) / avg_drop)
-    return f"Estimated days to target: {days_needed}"
-
-
-def run_check():
-    now = datetime.now().strftime("%d %b %I:%M %p")
-    print(f"Checking at {now}")
-
-    all_items = []
-    for checker in CHECKERS:
+    scrapers = []
+    for filename in sorted(os.listdir(scrapers_dir)):
+        if not filename.endswith(".py") or filename.startswith("_"):
+            continue
+        filepath = os.path.join(scrapers_dir, filename)
+        spec = importlib.util.spec_from_file_location(filename[:-3], filepath)
+        module = importlib.util.module_from_spec(spec)
         try:
-            all_items.extend(checker())
+            spec.loader.exec_module(module)
+            if hasattr(module, "scrape"):
+                scrapers.append(module.scrape)
+                print(f"[loader] Loaded scraper: {filename}")
+            else:
+                print(f"[loader] Skipped {filename} — no `scrape()` function found")
         except Exception as e:
-            print(f"{checker.__name__} error: {e}")
+            print(f"[loader] Failed to load {filename}: {e}")
 
-    for name, price, site, url in all_items:
-        log_price(price, site)
-
-    deals = [item for item in all_items if item[1] <= settings.BUDGET_CEILING]
-    prediction = predict_target_date()
-
-    if deals:
-        msg = f"{settings.PRODUCT_NAME} DEAL FOUND! [{now}]\n\n"
-        for name, price, site, url in deals:
-            msg += f"{name}\nPrice: {price}\nSite: {site}\n{analyze_deal(price)}\nLink: {url}\n\n"
-        msg += prediction
-
-        if any(price <= settings.TARGET_PRICE for _, price, _, _ in deals):
-            emergency_alert(msg)
-        else:
-            notify(f"{settings.PRODUCT_NAME} DEAL ALERT!", msg)
-            send_sms(msg)
-        print(msg)
-    else:
-        msg = (
-            f"{settings.PRODUCT_NAME} Check [{now}]\n"
-            f"No in-stock deal under {settings.BUDGET_CEILING} yet\n"
-            f"Still watching...\n{prediction}"
-        )
-        notify(f"{settings.PRODUCT_NAME} Check Done", msg)
-        send_sms(msg)
-        print(msg)
+    return scrapers
 
 
-def main():
-    for check_time in settings.CHECK_TIMES:
-        schedule.every().day.at(check_time).do(run_check)
+# ------------------------------------------------------------------ #
+#  Core agent class                                                   #
+# ------------------------------------------------------------------ #
 
-    run_check()
-    while True:
-        schedule.run_pending()
-        time.sleep(30)
+class DataExtractionAgent:
+    def __init__(self, plugin_config: dict, plugin_dir: str, on_results: Callable = None):
+        """
+        plugin_config: dict loaded from plugin's config file. Expected keys:
+          - price_log:    path to JSON log file
+          - proxy_url:    optional SOCKS5/HTTP proxy string
+          - user_agent:   optional custom UA string
+          - schedule:     list of "HH:MM" strings for daily check times
+          - budget:       upper price ceiling (passed to scrapers for filtering)
+          - target:       ideal target price (passed to scrapers)
 
+        plugin_dir:   path to the plugin folder (contains scrapers/)
+        on_results:   callback(results: list) called after each check cycle
+                      results = list of (name, price, source, url) tuples
+        """
+        self.config = plugin_config
+        self.plugin_dir = plugin_dir
+        self.on_results = on_results
+        self.log_path = plugin_config.get("price_log", "~/agent-data/prices.json")
 
-if __name__ == "__main__":
-    main()
+        proxy_url = plugin_config.get("proxy_url")
+        user_agent = plugin_config.get("user_agent", "Mozilla/5.0")
+        self.session = build_session(proxy_url=proxy_url, user_agent=user_agent)
+
+        self.scrapers = load_scrapers(plugin_dir)
+
+    def run_check(self):
+        now = datetime.now().strftime("%d %b %I:%M %p")
+        print(f"\n[agent] Check started at {now}")
+
+        results: List[Tuple] = []
+        for scraper in self.scrapers:
+            try:
+                found = scraper(self.session, self.config)
+                if found:
+                    for item in found:
+                        name, price, source, url = item
+                        log_result(self.log_path, price, source, {"name": name, "url": url})
+                    results.extend(found)
+            except Exception as e:
+                print(f"[agent] Scraper error: {e}")
+
+        print(f"[agent] Found {len(results)} result(s) this cycle.")
+
+        if self.on_results:
+            self.on_results(results)
+
+    def start(self):
+        """Schedule recurring checks and run the first one immediately."""
+        check_times = self.config.get("schedule", ["08:00", "13:00", "18:00", "21:00"])
+        for t in check_times:
+            schedule.every().day.at(t).do(self.run_check)
+            print(f"[agent] Scheduled check at {t}")
+
+        print("[agent] Running initial check now...")
+        self.run_check()
+
+        while True:
+            schedule.run_pending()
+            time.sleep(30)

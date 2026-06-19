@@ -4,83 +4,86 @@ A production-minded Heterogeneous Multi-Agent System built entirely on an Androi
 
 ## What This Is
 
-Most multi-agent systems are built on cloud servers with dedicated hardware, managed infrastructure, and significant budget. This one runs entirely on a phone.
+Most multi-agent systems are built on cloud servers with dedicated hardware and significant budget. This one runs entirely on a phone.
 
-HMAS is a system of six autonomous agents running concurrently, each with a distinct responsibility, communicating through shared state files. The architecture follows a decoupled, OS-level process model — similar to a microservices pattern — with zero infrastructure cost.
+HMAS is a **generic multi-agent framework** of six autonomous agents running concurrently, each with a distinct responsibility, communicating through shared state files. The architecture follows a decoupled, OS-level process model — similar to a microservices pattern — with zero infrastructure cost.
 
-Built to solve a real problem: monitoring retail price data across multiple platforms without access to a GPU, a laptop, or a cloud subscription.
+All domain-specific logic (what to track, where, thresholds) lives in config and swappable plugin folders. The core agents know nothing about what they're tracking. You can reuse the same framework to monitor anything — retail prices, concert tickets, stock alerts, job postings — by writing a new plugin instead of rewriting the agents.
 
-## The Problem It Solves
-
-Retail price data is volatile. Manual monitoring is impossible at scale. Cloud solutions are expensive. This system automates the entire pipeline — from data collection to buy/wait recommendations — running silently on edge hardware most people use only for social media.
+The included example plugin tracks GPU retail prices across 9 Indian e-commerce platforms.
 
 ## System Architecture
 
 Six agents. Each independently responsible. All communicating through shared state.
 
-See [`architecture-diagram.svg`](architecture-diagram.svg) for the full visual, and [`PRD.md`](PRD.md) for the requirements and design rationale behind each choice below.
+See `architecture-diagram.svg` for the full visual, and `PRD.md` for the requirements and design rationale.
 
-| Agent                           | Responsibility                                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------|
-| **Data Extraction Agent**       | Syncs catalog data across 9 retail platforms every 4 hours via distributed egress routing                                 |
-| **Predictive Analytics Engine** | Runs a local linear regression model over historical price vectors to forecast target baseline                            |
-| **Decision Layer**              | Synthesizes pricing trends into automated BUY/WAIT recommendations backed by telemetry                                    |
-| **Network Observability Agent** | Watches process health for data worker and background interfaces, triggering recovery on silent hangs                     |
-| **Inventory State Listener**    | Monitors high-volatility out-of-stock SKUs on a high-frequency polling thread, firing instant notifications on allocation  |
-| **Reacquisition Agent**         | Targets and reacquires dropped or failed data connections based on decision layer signals                                 |
+| Agent | Responsibility |
+|---|---|
+| Data Extraction Agent | Dynamically loads scraper plugins and syncs data across configured sources on a schedule |
+| Predictive Analytics Engine | Runs a local linear regression model over historical price data to forecast when the target will be reached |
+| Decision Layer | Synthesizes trends into automated BUY/WAIT recommendations driven by configurable thresholds |
+| Network Observability Agent | Monitors process health and domain reachability, alerting on infrastructure degradation |
+| Inventory State Listener | Polls a watchlist of out-of-stock items on a tight interval, firing instant alerts on restock |
+| Reacquisition Agent | Re-checks previously missed deals and alerts when conditions are met again |
 
-## For Non-Technical Readers
+## Plugin System
 
-Think of it like a team of six specialists working around the clock inside a single phone:
+To track something new, create a folder under `examples/` with:
 
-- One tracks prices across nine shopping platforms
-- One predicts where prices are heading
-- One decides whether to buy now or wait
-- One makes sure the whole team stays healthy and running
-- One watches for out-of-stock items and alerts instantly when they're back
-- One recovers any dropped connections automatically
+```
+examples/
+  your_plugin/
+    plugin_config.yaml   # thresholds, schedule, keywords
+    run.py               # wires config + notifier into the agent
+    scrapers/
+      site_one.py        # each file exposes scrape(session, config) -> list
+      site_two.py
+```
 
-No human involvement needed once it's running. No cloud bill. No laptop left on overnight.
-
-## Key Engineering Challenges Solved
-
-- Distributed network routing and circuit stability on a constrained device
-- Aggressive rate-limit handling across multiple retail platforms
-- Filtering telemetry anomalies — ghost stock and stale caching — to prevent false positives
-- Localized Termux:API hardware sandbox permissions
-- Strict fail-safe over fail-open strategy during routing drops
-- Self-healing process supervision via a watchdog loop that auto-restarts any crashed agent and survives full device reboots
+No changes to any core agent needed.
 
 ## How to Run
 
 1. Install Termux, Termux:API, and Termux:Boot from F-Droid (Google Play versions are not supported).
-2. Clone this repository and install dependencies:
-   ```bash
-   git clone https://github.com/Faraz-Sarkari/hmas-zero-cloud-android.git
-   cd hmas-zero-cloud-android
-   pip install -r requirements.txt
-   ```
-3. Set your alert phone number as an environment variable:
-   ```bash
-   export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
-   ```
-4. To start all 6 agents at once:
-   ```bash
-   bash ops/start_all_agents.sh
-   ```
-   Or run any single agent individually, e.g.:
-   ```bash
-   python agents/data_extraction_agent.py
-   ```
-5. For auto-restart on crash and phone reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration.
+
+2. Clone and install dependencies:
+```bash
+git clone https://github.com/Faraz-Sarkari/hmas-zero-cloud-android.git
+cd hmas-zero-cloud-android
+pip install -r requirements.txt
+```
+
+3. Copy and fill in your config:
+```bash
+cp config/user_config.example.yaml user_config.yaml
+```
+
+4. Set your alert phone number:
+```bash
+export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
+```
+
+5. Start all 6 agents:
+```bash
+bash ops/start_all_agents.sh
+```
+
+Or run any single agent individually:
+```bash
+python agents/data_extraction_agent.py
+```
+
+For auto-restart on crash and reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration.
 
 ## Reporting & Alerts
 
 All reporting happens on-device — no external services, no cloud dashboards.
 
-- **Routine checks:** after each scheduled price check, a standard Android push notification and SMS are sent via Termux:API, summarizing current prices and stock status across all 9 platforms.
-- **Emergency mode:** if any tracked price drops to or below the target budget, the system switches to high-priority alerting — sending a notification and SMS every 2 minutes for 20 minutes straight, with stronger vibration patterns, to guarantee the alert isn't missed.
-- All communication uses Termux:API's native `termux-notification` and `termux-sms-send` commands — no third-party messaging APIs, no recurring costs.
+- **Routine checks:** push notification and SMS after each scheduled check, summarizing current status.
+- **Emergency mode:** if price hits or drops below target, the system switches to high-priority alerting — notification and SMS every 2 minutes for 20 minutes, with stronger vibration.
+
+All communication uses Termux:API's native `termux-notification` and `termux-sms-send` — no third-party APIs, no recurring costs.
 
 ## Stack
 
@@ -92,15 +95,14 @@ All reporting happens on-device — no external services, no cloud dashboards.
 
 ## Status
 
-Architecture complete. All 6 agents implemented and pushed. Documentation live, including a full PRD and architecture diagram. Not yet load-tested or run unattended for an extended period — see `PRD.md` for open items.
+Architecture complete. All 6 agents generalized and pushed. Plugin system implemented with retail price monitor as reference example. Documentation live. Not yet load-tested for extended unattended runs — see `PRD.md` for open items.
 
 ## Why This Matters
 
 Edge AI is not a future concept — it's already here. This project demonstrates that production-minded autonomous systems can be designed, deployed, and maintained on hardware that fits in your pocket, with no dependency on cloud providers or expensive infrastructure.
 
-That has implications for emerging markets, resource-constrained organizations, and anyone building AI systems that need to operate where the internet is unreliable or cloud costs are prohibitive.
+That has implications for emerging markets, resource-constrained organizations, and anyone building AI systems where the internet is unreliable or cloud costs are prohibitive.
 
 ---
 
-Built by **Faraz Sarkari** — CS student, systems thinker.
-Open to internships and consulting in Agentic AI, Multi-Agent Systems Design, and AI Solutions Architecture.
+Built by Faraz Sarkari — CS student, systems thinker. Open to internships and consulting in Agentic AI, Multi-Agent Systems Design, and AI Solutions Architecture.

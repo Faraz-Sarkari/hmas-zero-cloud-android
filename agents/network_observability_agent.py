@@ -1,69 +1,77 @@
 """
-Agent Monitor: Heterogeneous Multi-Agent System (HMAS)
-========================================================
-Responsibility: Watches the health of the primary price-hunting agent
-(rtx-agent) and the supporting infrastructure (Tor process). If the
-primary agent process is not running, or Tor is down, this agent
-raises an alert so the user is never silently left unprotected.
-
-This agent embodies the "observability" layer of the system.
+network_observability_agent.py — Network Monitor
+=================================================
+Generic. Checks Tor proxy + reachability of any configured domains.
+All domains and proxy settings come from config.
 """
-import subprocess
+
+import socket
 import time
-import sys
 import os
 
-sys.path.append(os.path.expanduser("~/multi-agent-system"))
+import requests
+
 from shared.logger import get_logger
-from shared.notifier import send_notification, send_sms
+from shared.notifier import send_notification
 
-logger = get_logger("agent_monitor")
-
-CHECK_INTERVAL_SECONDS = 1800  # 10 minutes
+logger = get_logger("network_observability_agent")
 
 
-def is_process_running(keyword: str) -> bool:
-    """Checks if a process containing `keyword` is currently running."""
+def is_tor_alive(host: str = "127.0.0.1", port: int = 9050) -> bool:
     try:
-        result = subprocess.run(
-            ['pgrep', '-f', keyword],
-            capture_output=True, text=True
-        )
-        return bool(result.stdout.strip())
-    except Exception as e:
-        logger.error(f"Failed to check process '{keyword}': {e}")
+        s = socket.create_connection((host, port), timeout=3)
+        s.close()
+        return True
+    except Exception:
         return False
 
 
-def run_monitor_cycle() -> None:
-    """Single health-check cycle of the primary agent + Tor."""
-    agent_alive = is_process_running("rtx-agent/agent.py")
-    tor_alive = is_process_running("tor")
+def check_domain(domain: str, proxies: dict) -> bool:
+    try:
+        r = requests.get(f"https://{domain}", proxies=proxies, timeout=10)
+        return r.status_code < 500
+    except Exception:
+        return False
 
-    logger.info(f"rtx-agent alive: {agent_alive} | tor alive: {tor_alive}")
 
-    if not agent_alive:
-        msg = "ALERT: Primary RTX price agent is DOWN. It is not currently monitoring prices."
+def run_network_check(config: dict) -> None:
+    proxy_cfg = config.get("network", {}).get("tor_proxy", {})
+    use_tor = config.get("network", {}).get("use_tor", False)
+    domains = config.get("monitored_domains", [])
+
+    if use_tor:
+        alive = is_tor_alive()
+        logger.info(f"Tor alive: {alive}")
+        if not alive:
+            msg = "Network Monitor: Tor is DOWN. Scraping is blocked."
+            logger.warning(msg)
+            send_notification("Network Monitor: Tor Down", msg)
+            return
+        proxies = proxy_cfg
+    else:
+        proxies = {}
+
+    unreachable = [d for d in domains if not check_domain(d, proxies)]
+
+    if unreachable:
+        msg = "Unreachable sites: " + ", ".join(unreachable)
         logger.warning(msg)
-        send_notification("Agent Monitor: Primary Agent Down", msg)
-        send_sms(msg)
-
-    if not tor_alive:
-        msg = "ALERT: Tor process is DOWN. Scraping is currently halted (privacy-safe failover)."
-        logger.warning(msg)
-        send_notification("Agent Monitor: Tor Down", msg)
-        send_sms(msg)
-
-    if agent_alive and tor_alive:
-        logger.info("System healthy. No action needed.")
+        send_notification("Network Monitor: Sites Down", msg)
+    else:
+        logger.info("All domains reachable. Network healthy.")
 
 
-def main() -> None:
-    logger.info("Agent Monitor started. Watching system health every %s seconds.", CHECK_INTERVAL_SECONDS)
+def main(config: dict) -> None:
+    interval = config.get("network_check_interval_seconds", 1800)
+    logger.info("Network Observability Agent started. Interval: %ss.", interval)
     while True:
-        run_monitor_cycle()
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        run_network_check(config)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
-    main()
+    import yaml
+    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    main(config)

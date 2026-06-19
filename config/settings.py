@@ -21,7 +21,23 @@ TARGET_PRICE      = _cfg["thresholds"]["target_price"]
 WARNING_THRESHOLD = _cfg["thresholds"]["warning_threshold"]
 
 # Contact
-CONTACT_NUMBER = os.environ.get("ALERT_PHONE_NUMBER") or _cfg.get("contact", {}).get("phone", "")
+CONTACT_NUMBER = 
+python3 - << 'EOF'
+import re
+path = "config/settings.py"
+content = open(path).read()
+insert = '''
+# Product / plugin selection
+PRODUCT_NAME   = _cfg.get("product", {}).get("name", "Item")
+SOURCES_MODULE = _cfg.get("sources_module", "examples.retail_price_monitor.sources")
+'''
+marker = '_cfg.get("contact", {}).get("phone", "")'
+idx = content.index(marker) + len(marker)
+content = content[:idx] + "\n" + insert + content[idx:]
+open(path, "w").write(content)
+print("settings.py patched")
+EOF
+os.environ.get("ALERT_PHONE_NUMBER") or _cfg.get("contact", {}).get("phone", "")
 
 # Product / plugin selection
 PRODUCT_NAME   = _cfg.get("product", {}).get("name", "Item")

@@ -6,6 +6,11 @@ thresholds:
 contact:
   phone: ""
 
+product:
+  name: "RTX 5060 Ti 16GB"
+
+sources_module: "examples.retail_price_monitor.sources"
+
 network:
   use_tor: true
   tor_proxy:
@@ -18,3 +23,40 @@ scheduler:
     - "13:00"
     - "18:00"
     - "21:00"
+
+advisor:
+  advisory_hour: 10
+  prediction_interval_seconds: 3600
+  checks_per_day: 4
+
+watchlist_path: "~/agent-data/watchlist.json"
+watchlist_interval_seconds: 900
+oos_markers:
+  - "out of stock"
+  - "sold out"
+  - "unavailable"
+  - "notify me"
+
+monitor_interval_seconds: 1800
+monitored_processes:
+  - name: "Price Hunter"
+    keyword: "data_extraction_agent.py"
+    down_message: "Price hunting agent is not running. Prices are not being monitored."
+  - name: "Tor"
+    keyword: "tor"
+    down_message: "Tor is down. Scraping is halted."
+
+network_check_interval_seconds: 1800
+monitored_domains:
+  - "www.primeabgb.com"
+  - "mdcomputers.in"
+  - "www.vedantcomputers.com"
+  - "elitehubs.com"
+  - "famberzbuilt.in"
+  - "www.smartprix.com"
+  - "www.amazon.in"
+  - "www.flipkart.com"
+  - "www.nehruplacemarket.com"
+
+missed_deals_path: "~/agent-data/missed_deals.json"
+reacquisition_interval_seconds: 900
