@@ -85,6 +85,18 @@ All reporting happens on-device — no external services, no cloud dashboards.
 
 All communication uses Termux:API's native `termux-notification` and `termux-sms-send` — no third-party APIs, no recurring costs.
 
+## Validation Layer
+
+To prevent acting on bad data — scraper errors, mismatched listings, or scam-like pricing — every scraped result passes through three automated checks before being logged or surfaced as a recommendation:
+
+| Check | Purpose |
+|---|---|
+| Price Sanity | Flags any price that drops more than a configurable % below recent average — catches scraper bugs and "too good to be true" listings |
+| Title/Brand Match | Flags results whose scraped title doesn't contain expected brand or product keywords — catches mismatched or garbage listings |
+| Cross-Source Consistency | Flags any single source whose price diverges sharply from the median across all sources checked that cycle |
+
+Suspicious results are still logged (tagged `suspicious: true` with reasons) but trigger an immediate warning notification instead of being silently trusted. Thresholds are fully configurable per plugin.
+
 ## Stack
 
 - **Language:** Python
