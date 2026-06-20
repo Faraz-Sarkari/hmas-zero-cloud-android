@@ -177,3 +177,11 @@ venv.bak/
 venv/
 wheels/
 user_config.yaml
+
+# HMAS runtime data — never commit these
+logs/*.log
+logs/*.log.*
+data/*.json
+data/*.csv
+~/agent-data/
+config/user_config.yaml

@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from shared.validator import title_matches_expected
+from shared.http import fetch_with_retry
 
 URL = "https://elitehubs.com/collections/nvidia-geforce-rtx-5060-ti-graphics-card"
 
@@ -10,7 +11,10 @@ def scrape(session, config):
     brand_keywords = config.get("brand_keywords", [])
     results = []
     try:
-        soup = BeautifulSoup(session.get(URL, timeout=20).text, "html.parser")
+        response = fetch_with_retry(session, URL)
+        if response is None:
+            return results
+        soup = BeautifulSoup(response.text, "html.parser")
         for p in soup.select(".product-item"):
             name_tag = p.select_one(".product-item__title")
             price_tag = p.select_one(".price__current")
