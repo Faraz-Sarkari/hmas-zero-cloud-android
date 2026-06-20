@@ -86,6 +86,8 @@ cp ops/start-agent.sh ~/.termux/boot/
 ```
 The watchdog restarts any crashed agent automatically and survives full device reboots.
 
+> **Samsung/OneUI users:** Android may kill Termux after extended background time (30-60 mins). If agents stop, simply reopen Termux and run `bash ops/start_all_agents.sh` — everything is back in seconds. This is an OS-level limitation, not a bug.
+
 ## Reporting & Alerts
 
 All reporting happens on-device — no external services, no cloud dashboards.
