@@ -133,7 +133,7 @@ def main(config: dict) -> None:
 
 if __name__ == "__main__":
     import yaml
-    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "../config/user_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     main(config)
