@@ -1,10 +1,12 @@
 from bs4 import BeautifulSoup
+from shared.validator import title_matches_expected
 
 URL = "https://www.vedantcomputers.com/index.php?route=product/search&search=rtx+5060+ti+16gb"
 
 def scrape(session, config):
     budget = config.get("budget", float("inf"))
     keyword = config.get("filter_keyword", "16GB")
+    brand_keywords = config.get("brand_keywords", [])
     results = []
     try:
         soup = BeautifulSoup(session.get(URL, timeout=20).text, "html.parser")
@@ -13,6 +15,9 @@ def scrape(session, config):
             price_tag = p.select_one(".price-normal")
             url = name_tag["href"] if name_tag and name_tag.get("href") else URL
             if name_tag and price_tag and keyword in name_tag.text:
+                if brand_keywords and not title_matches_expected(name_tag.text, brand_keywords):
+                    print(f"[vedant] Rejected listing — no trusted brand match: {name_tag.text.strip()}")
+                    continue
                 try:
                     price = int(float(price_tag.text.replace("₹", "").replace(",", "").strip()))
                     if price <= budget:
