@@ -7,7 +7,7 @@ AGENT_LABEL="${2:-HMAS Agent}"
 
 while true; do
     echo "Starting $AGENT_LABEL..."
-    python "$ENTRY_POINT"
+    PYTHONPATH="$PROJECT_ROOT" python "$ENTRY_POINT"
     echo "$AGENT_LABEL crashed! Restarting in 10 seconds..."
     termux-notification \
         --title "$AGENT_LABEL" \
