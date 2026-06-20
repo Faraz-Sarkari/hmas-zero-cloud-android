@@ -106,3 +106,13 @@ That has implications for emerging markets, resource-constrained organizations, 
 ---
 
 Built by Faraz Sarkari — CS student, systems thinker. Open to internships and consulting in Agentic AI, Multi-Agent Systems Design, AI-Product Manager and AI Solutions Architecture.
+
+## Proof of Concept
+
+Live agent run on Android/Termux:
+
+<img width="720" height="871" alt="Image" src="https://github.com/user-attachments/assets/64696780-a64a-424a-a8d4-9071f1294240" />
+
+<img width="720" height="1435" alt="Image" src="https://github.com/user-attachments/assets/796e57e0-0170-4c5d-9413-75efa43effa5" />
+
+<img width="720" height="1370" alt="Image" src="https://github.com/user-attachments/assets/8904c61e-c275-4bc7-b1ba-7ac5ccc8fb24" />
