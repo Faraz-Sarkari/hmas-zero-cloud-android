@@ -47,24 +47,29 @@ No changes to any core agent needed.
 
 1. Install Termux, Termux:API, and Termux:Boot from F-Droid (Google Play versions are not supported).
 
-2. Clone and install dependencies:
+2. Clone the repo and run the one-time setup script — installs all dependencies, creates runtime directories, and copies the config template:
 ```bash
 git clone https://github.com/Faraz-Sarkari/hmas-zero-cloud-android.git
 cd hmas-zero-cloud-android
-pip install -r requirements.txt
+bash setup.sh
 ```
 
-3. Copy and fill in your config:
+3. Edit your config with your target price, phone number, and preferences:
 ```bash
-cp config/user_config.example.yaml user_config.yaml
+nano config/user_config.yaml
 ```
 
-4. Set your alert phone number:
+4. Set your alert phone number as an environment variable (or put it in `config/user_config.yaml`):
 ```bash
 export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
 ```
 
-5. Start all 6 agents:
+5. Start Tor (required if `use_tor: true` in config — skip otherwise):
+```bash
+tor &
+```
+
+6. Start all 6 agents, each under watchdog supervision:
 ```bash
 bash ops/start_all_agents.sh
 ```
@@ -74,7 +79,12 @@ Or run any single agent individually:
 python agents/data_extraction_agent.py
 ```
 
-For auto-restart on crash and reboot, the `ops/` folder contains `start-agent.sh` and `watchdog.sh` for Termux:Boot integration.
+**Auto-restart on reboot (Termux:Boot):** copy `start-agent.sh` into the boot folder once:
+```bash
+mkdir -p ~/.termux/boot
+cp ops/start-agent.sh ~/.termux/boot/
+```
+The watchdog restarts any crashed agent automatically and survives full device reboots.
 
 ## Reporting & Alerts
 

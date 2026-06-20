@@ -101,6 +101,8 @@ Running in parallel, on independent loops: **Network Observability Agent** watch
 
 ## 12. Open Questions
 
-- What specific circuit-breaker thresholds govern when the Reacquisition Agent gives up vs. retries?
-- What does "silent hang" detection actually check for in the Network Observability Agent?
-- These are being resolved agent-by-agent in the code walkthrough track of this project's documentation.
+~~- What specific circuit-breaker thresholds govern when the Reacquisition Agent gives up vs. retries?~~
+**Resolved:** The Reacquisition Agent retries on every polling interval (`reacquisition_interval_seconds`, default 900s) indefinitely until the item becomes available, at which point it is removed from the missed deals list. There is no give-up threshold by design — a missed deal stays on the watchlist until it resolves. Configurable via `reacquisition_interval_seconds` in `plugin_config.yaml`.
+
+~~- What does "silent hang" detection actually check for in the Network Observability Agent?~~
+**Resolved:** The Network Observability Agent checks two things: (1) whether the Tor SOCKS5 proxy port (9050) accepts a TCP connection via `socket.create_connection`, and (2) whether each domain in `monitored_domains` returns HTTP status < 500. Failure on either triggers a push notification. This covers the most common silent-hang scenario — Tor daemon alive but routing broken — without requiring process introspection.
