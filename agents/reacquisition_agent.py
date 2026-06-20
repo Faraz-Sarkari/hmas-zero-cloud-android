@@ -70,9 +70,9 @@ def is_available(html: str, oos_markers: list) -> bool:
 def run_reacquisition_cycle(config: dict, session: requests.Session) -> None:
     path = config.get("missed_deals_path", MISSED_DEALS_PATH_DEFAULT)
     oos_markers = config.get("oos_markers", ["out of stock", "sold out", "unavailable", "notify me"])
-    budget = config.get("thresholds", {}).get("budget_ceiling", float("inf"))
-    target = config.get("thresholds", {}).get("target_price", 0)
-    item_label = config.get("product", {}).get("name", "item")
+    budget = config.get("budget", float("inf"))
+    target = config.get("target", 0)
+    item_label = config.get("item_label", "item")
 
     deals = load_missed_deals(path)
     if not deals:
@@ -120,7 +120,7 @@ def main(config: dict) -> None:
 
 if __name__ == "__main__":
     import yaml
-    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "../examples/retail_price_monitor/plugin_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     main(config)

@@ -218,3 +218,22 @@ class DataExtractionAgent:
         while True:
             schedule.run_pending()
             time.sleep(30)
+
+
+if __name__ == "__main__":
+    import yaml
+
+    _config_path = os.path.join(
+        os.path.dirname(__file__),
+        "../examples/retail_price_monitor/plugin_config.yaml",
+    )
+    with open(_config_path, "r") as _f:
+        _config = yaml.safe_load(_f)
+
+    _plugin_dir = os.path.join(
+        os.path.dirname(__file__),
+        "../examples/retail_price_monitor",
+    )
+
+    agent = DataExtractionAgent(plugin_config=_config, plugin_dir=_plugin_dir)
+    agent.start()

@@ -1,32 +1,60 @@
 # HMAS User Configuration
-# Copy this file to user_config.yaml and fill in your values.
-# Never commit user_config.yaml — it contains personal settings.
+# -------------------------
+# Copy this file to config/user_config.yaml and fill in your values.
+# Never commit user_config.yaml — it contains personal settings (gitignored).
 
-thresholds:
-  budget_ceiling:    0      # Hard upper limit — never alert above this
-  target_price:      0      # Ideal price — triggers a BUY signal
-  warning_threshold: 0      # Soft warning — price is getting close
+# ── Product ───────────────────────────────────────────────────────────────────
+item_label: "Target Item"        # Used in all alert messages
+budget:     60000                # Hard upper limit — skip listings above this
+target:     55000                # Ideal price — triggers a BUY signal
+warning_threshold: 57000         # Soft warning — price is getting close
 
+# ── Contact ───────────────────────────────────────────────────────────────────
+# Set ALERT_PHONE_NUMBER as an env variable instead of here where possible.
 contact:
-  phone: ""                 # e.g. "+1XXXXXXXXXX" or set ALERT_PHONE_NUMBER env variable
+  phone: ""                      # e.g. "+91XXXXXXXXXX"
 
-product:
-  name: "Target Item"       # used in alert messages, e.g. "RTX 5060 Ti 16GB"
+# ── Scheduler (Data Extraction Agent) ─────────────────────────────────────────
+schedule:
+  - "08:00"
+  - "13:00"
+  - "18:00"
+  - "21:00"
+checks_per_day: 4                # Must match the number of schedule entries above
 
-sources_module: "examples.retail_price_monitor.sources"
-# Which scraper plugin to run. Must be an importable module exposing
-# get_checkers(). Swap this to point at your own plugin for a different
-# product/market.
+# ── Decision Layer ────────────────────────────────────────────────────────────
+advisory_hour: 10                # Hour (24h) to send daily BUY/WAIT recommendation
 
+# ── Predictive Analytics Engine ───────────────────────────────────────────────
+prediction_interval_seconds: 3600
+
+# ── Inventory State Listener ──────────────────────────────────────────────────
+watchlist_path: "~/agent-data/watchlist.json"
+watchlist_interval_seconds: 900  # How often to poll watchlist URLs (seconds)
+oos_markers:                     # Strings that indicate out-of-stock on a page
+  - "out of stock"
+  - "sold out"
+  - "unavailable"
+  - "notify me"
+
+# ── Network Observability Agent ───────────────────────────────────────────────
+network_check_interval_seconds: 1800
+monitored_domains:               # Domains to check for reachability
+  - "amazon.in"
+  - "flipkart.com"
+  - "mdcomputers.in"
+
+# ── Reacquisition Agent ───────────────────────────────────────────────────────
+missed_deals_path: "~/agent-data/missed_deals.json"
+reacquisition_interval_seconds: 900
+
+# ── Price Log (shared across agents) ─────────────────────────────────────────
+price_log: "~/agent-data/prices.json"
+
+# ── Network / Proxy ───────────────────────────────────────────────────────────
+proxy_url: "socks5h://127.0.0.1:9050"   # Remove or leave blank to disable Tor
 network:
   use_tor: true
   tor_proxy:
     http:  "socks5h://127.0.0.1:9050"
     https: "socks5h://127.0.0.1:9050"
-
-scheduler:
-  check_times:
-    - "08:00"
-    - "13:00"
-    - "18:00"
-    - "21:00"

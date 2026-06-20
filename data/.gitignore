@@ -1,0 +1,4 @@
+# Keep the directory in version control but ignore all data files
+*.json
+*.csv
+*.log
