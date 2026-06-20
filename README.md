@@ -105,4 +105,4 @@ That has implications for emerging markets, resource-constrained organizations, 
 
 ---
 
-Built by Faraz Sarkari — CS student, systems thinker. Open to internships and consulting in Agentic AI, Multi-Agent Systems Design, and AI Solutions Architecture.
+Built by Faraz Sarkari — CS student, systems thinker. Open to internships and consulting in Agentic AI, Multi-Agent Systems Design, AI-Product Manager and AI Solutions Architecture.
