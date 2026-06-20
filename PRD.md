@@ -92,6 +92,7 @@ Running in parallel, on independent loops: **Network Observability Agent** watch
 | Stale cache or "ghost stock" produces false buy/restock signals | Telemetry anomaly filtering before signals reach the Decision Layer |
 | The phone itself is a single point of failure — no redundant hardware | Accepted tradeoff at this budget; mitigated by watchdog + boot-survival, not by redundancy |
 | Routing/network instability mid-cycle | Fail-safe (not fail-open) strategy — the system favors missing a cycle over acting on bad data |
+| Tor exit nodes blocked by retail platforms | 4-layer resilience: auto-restart dead Tor → request new circuit → direct IP fallback. Amazon/Flipkart may still return 503 via Tor; direct fallback handles this automatically. Documented expected behavior, not a bug. |
 
 ## 11. Out of Scope / Future Work
 

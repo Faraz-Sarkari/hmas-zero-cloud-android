@@ -64,7 +64,7 @@ nano config/user_config.yaml
 export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
 ```
 
-5. Start Tor (required if `use_tor: true` in config — skip otherwise):
+5. Start Tor (required if `use_tor: true` in config — skip otherwise). If you set up Termux:Boot, Tor starts automatically on reboot — no need to run this manually again:
 ```bash
 tor &
 ```
