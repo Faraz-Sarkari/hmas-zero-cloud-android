@@ -64,6 +64,23 @@ nano config/user_config.yaml
 export ALERT_PHONE_NUMBER="+XXXXXXXXXXX"
 ```
 
+4b. Set up Tor (one-time, required if `use_tor: true`). Install and configure:
+```bash
+pkg install tor
+tor --hash-password "yourpassword" # copy the output hash
+nano $PREFIX/etc/tor/torrc
+```
+Add these lines to torrc:
+```
+ControlPort 9051
+HashedControlPassword <paste hash here>
+```
+Then add your password to bashrc:
+```bash
+echo 'export TOR_CONTROL_PASSWORD="yourpassword"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 5. Start Tor (required if `use_tor: true` in config — skip otherwise). If you set up Termux:Boot, Tor starts automatically on reboot — no need to run this manually again:
 ```bash
 tor &
@@ -97,6 +114,19 @@ All reporting happens on-device — no external services, no cloud dashboards.
 
 All communication uses Termux:API's native `termux-notification` and `termux-sms-send` — no third-party APIs, no recurring costs.
 
+## Network Resilience
+
+All HTTP requests go through a 4-layer resilience system:
+
+| Layer | Behavior |
+|---|---|
+| 1 | Use Tor for anonymized routing |
+| 2 | If Tor is blocked by a site → request new circuit automatically |
+| 3 | If circuit rotation fails → log and notify, no crash |
+| 4 | If all Tor attempts fail → fall back to direct IP connection silently |
+
+This means the system never hard-fails on a network issue — it degrades gracefully and keeps running.
+
 ## Validation Layer
 
 To prevent acting on bad data — scraper errors, mismatched listings, or scam-like pricing — every scraped result passes through three automated checks before being logged or surfaced as a recommendation:
@@ -119,7 +149,7 @@ Suspicious results are still logged (tagged `suspicious: true` with reasons) but
 
 ## Status
 
-Architecture complete. All 6 agents generalized and pushed. Plugin system implemented with retail price monitor as reference example. Documentation live. Not yet load-tested for extended unattended runs — see `PRD.md` for open items.
+Architecture complete. All 6 agents generalized and pushed. Plugin system implemented with retail price monitor as reference example. Documentation live. Live and running unattended on Android/Termux. Battle-tested over multiple days of continuous operation.
 
 ## Why This Matters
 

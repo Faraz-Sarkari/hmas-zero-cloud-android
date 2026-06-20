@@ -26,7 +26,7 @@ HMAS exists to answer one question continuously, without a human watching: **is 
 
 ## 3. Non-Goals
 
-- Not a general-purpose scraping framework — it's scoped to the platforms and items it was built to watch.
+- The core agents are domain-agnostic — a plugin system allows tracking anything by swapping scrapers and config. The default plugin is scoped to GPU retail price monitoring across 9 Indian platforms.
 - Not built for multi-user or high-request-volume use — this is a single-device, single-owner system by design.
 - Not optimized for sub-second latency. A 4-hour extraction cycle and polling-based listeners are a deliberate cost/freshness tradeoff, not a limitation the team is trying to engineer away.
 - Not a cloud-portable service. Portability off the phone was explicitly *not* a requirement — proving the opposite (that this class of system doesn't need cloud) is the point of the project.
@@ -91,6 +91,7 @@ Running in parallel, on independent loops: **Network Observability Agent** watch
 | Retail platforms rate-limit or block repeated requests | Distributed egress routing, aggressive rate-limit handling across platforms |
 | Stale cache or "ghost stock" produces false buy/restock signals | Telemetry anomaly filtering before signals reach the Decision Layer |
 | The phone itself is a single point of failure — no redundant hardware | Accepted tradeoff at this budget; mitigated by watchdog + boot-survival, not by redundancy |
+| Android (Samsung/OneUI) may kill background processes after 30-60 mins | Battery set to Unrestricted for all Termux apps; agents restart in one command; documented expected behavior for users |
 | Routing/network instability mid-cycle | Fail-safe (not fail-open) strategy — the system favors missing a cycle over acting on bad data |
 | Tor exit nodes blocked by retail platforms | 4-layer resilience: auto-restart dead Tor → request new circuit → direct IP fallback. Amazon/Flipkart may still return 503 via Tor; direct fallback handles this automatically. Documented expected behavior, not a bug. |
 
