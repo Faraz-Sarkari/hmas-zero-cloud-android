@@ -10,6 +10,7 @@ def scrape(session, config):
     keyword = config.get("filter_keyword", "16GB")
     brand_keywords = config.get("brand_keywords", [])
     results = []
+    session.headers.update({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
     try:
         response = fetch_with_retry(session, URL)
         if response is None:
