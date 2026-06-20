@@ -8,6 +8,7 @@ All domains and proxy settings come from config.
 import socket
 import time
 import os
+import subprocess
 
 import requests
 
@@ -39,12 +40,16 @@ def run_network_check(config: dict) -> None:
     use_tor = config.get("network", {}).get("use_tor", False)
     domains = config.get("monitored_domains", [])
 
-    import subprocess
     if use_tor:
         alive = is_tor_alive()
+        if not alive:
+            logger.warning("Tor is DOWN. Attempting restart...")
+            subprocess.Popen(["tor"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(8)
+            alive = is_tor_alive()
         logger.info(f"Tor alive: {alive}")
         if not alive:
-            msg = "Network Monitor: Tor is DOWN. Scraping is blocked."
+            msg = "Network Monitor: Tor is DOWN and restart failed. Scraping is blocked."
             logger.warning(msg)
             send_notification("Network Monitor: Tor Down", msg)
             return
