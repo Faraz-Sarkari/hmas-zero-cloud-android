@@ -5,6 +5,7 @@ from shared.http import fetch_with_retry
 URL = "https://www.amazon.in/s?k=rtx+5060+ti+16gb"
 
 def scrape(session, config):
+    URL = config.get("scraper_urls", {}).get("amazon", globals()["URL"])
     budget = config.get("budget", float("inf"))
     keyword = config.get("filter_keyword", "16GB")
     secondary = config.get("filter_keyword_2", "5060 Ti")

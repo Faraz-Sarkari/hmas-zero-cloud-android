@@ -22,7 +22,7 @@ from shared.notifier import send_notification, send_sms
 
 logger = get_logger("decision_layer")
 
-CHECK_INTERVAL_SECONDS = 1800
+
 
 
 def load_price_history(log_path: str) -> list:
@@ -101,7 +101,7 @@ def main(config: dict) -> None:
         if now.hour == advisory_hour and now.date() != last_sent_date:
             run_advisory_cycle(config)
             last_sent_date = now.date()
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        time.sleep(config.get("advisory_check_interval_seconds", 1800))
 
 
 if __name__ == "__main__":

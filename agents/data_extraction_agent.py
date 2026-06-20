@@ -84,7 +84,7 @@ def log_result(log_path: str, price: float, source: str, extra: dict = None):
 #  Plugin loader — dynamically imports scraper modules                #
 # ------------------------------------------------------------------ #
 
-def load_scrapers(plugin_dir: str) -> List[Callable]:
+def load_scrapers(plugin_dir: str, plugin_config: dict = None) -> List[Callable]:
     """
     Scans plugin_dir/scrapers/ for Python files.
     Each file must expose a `scrape(session, config) -> list` function.
@@ -95,9 +95,16 @@ def load_scrapers(plugin_dir: str) -> List[Callable]:
         print(f"[loader] No scrapers/ folder found in {plugin_dir}")
         return []
 
+    # If plugin config specifies enabled_scrapers, only load those files.
+    # Use "all" or omit the key entirely to load everything in the folder.
+    enabled = plugin_config.get("enabled_scrapers", "all") if plugin_config else "all"
+
     scrapers = []
     for filename in sorted(os.listdir(scrapers_dir)):
         if not filename.endswith(".py") or filename.startswith("_"):
+            continue
+        if enabled != "all" and filename not in enabled:
+            print(f"[loader] Skipped {filename} — not in enabled_scrapers")
             continue
         filepath = os.path.join(scrapers_dir, filename)
         spec = importlib.util.spec_from_file_location(filename[:-3], filepath)
@@ -143,7 +150,7 @@ class DataExtractionAgent:
         user_agent = plugin_config.get("user_agent", "Mozilla/5.0")
         self.session = build_session(proxy_url=proxy_url, user_agent=user_agent)
 
-        self.scrapers = load_scrapers(plugin_dir)
+        self.scrapers = load_scrapers(plugin_dir, plugin_config)
 
     def run_check(self):
         now = datetime.now().strftime("%d %b %I:%M %p")

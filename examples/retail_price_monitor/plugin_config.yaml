@@ -31,3 +31,50 @@ expected_keywords:
 max_price_drop_pct: 0.35
 max_source_deviation_pct: 0.30
 checks_per_day: 4
+
+# ── Agent Selection ───────────────────────────────────────────────────────────
+# Comment out any agent you don't want to run.
+enabled_agents:
+  - data_extraction
+  - predictive_analytics
+  - decision_layer
+  - network_observability
+  - inventory_state_listener
+  - reacquisition
+
+# ── Scraper Selection ─────────────────────────────────────────────────────────
+# List scraper filenames to enable, or set to "all" to run everything in scrapers/
+# Add your own scrapers by dropping a .py file in scrapers/ and listing it here.
+enabled_scrapers:
+  - amazon.py
+  - elitehubs.py
+  - famberzbuilt.py
+  - flipkart.py
+  - mdcomputers.py
+  - nehruplace.py
+  - primeabgb.py
+  - smartprix.py
+  - vedant.py
+
+# ── Scraper URLs ──────────────────────────────────────────────────────────────
+# Override any scraper's default URL here without touching Python files.
+# Key must match the scraper filename (without .py).
+scraper_urls:
+  amazon:       "https://www.amazon.in/s?k=rtx+5060+ti+16gb"
+  elitehubs:    "https://elitehubs.com/collections/nvidia-geforce-rtx-5060-ti-graphics-card"
+  famberzbuilt: "https://famberzbuilt.in/category/graphics-cards"
+  flipkart:     "https://www.flipkart.com/search?q=rtx+5060+ti+16gb"
+  mdcomputers:  "https://mdcomputers.in/index.php?route=product/search&search=rtx+5060+ti+16gb"
+  nehruplace:   "https://www.nehruplacemarket.com/price-list/graphicscard-price-list.html"
+  primeabgb:    "https://www.primeabgb.com/buy-online-price-india/geforce-rtx-5060-ti-graphic-card/"
+  smartprix:    "https://www.smartprix.com/goods/?q=rtx+5060+ti+16gb"
+  vedant:       "https://www.vedantcomputers.com/index.php?route=product/search&search=rtx+5060+ti+16gb"
+
+# How often the Decision Layer wakes to check if it's time to send the advisory (seconds)
+advisory_check_interval_seconds: 1800
+
+# ── Alert Behaviour ───────────────────────────────────────────────────────────
+urgent_repeat_count: 10             # How many times to repeat urgent alerts
+urgent_repeat_interval_seconds: 120 # Gap between urgent repeats (seconds)
+vibrate_normal: "500,200,500"       # Vibration pattern for routine notifications
+vibrate_urgent: "1000,500,1000"     # Vibration pattern for urgent alerts

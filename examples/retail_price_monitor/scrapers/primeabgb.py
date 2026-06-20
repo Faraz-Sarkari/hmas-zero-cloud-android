@@ -5,6 +5,7 @@ from shared.http import fetch_with_retry
 URL = "https://www.primeabgb.com/buy-online-price-india/geforce-rtx-5060-ti-graphic-card/"
 
 def scrape(session, config):
+    URL = config.get("scraper_urls", {}).get("primeabgb", globals()["URL"])
     budget = config.get("budget", float("inf"))
     keyword = config.get("filter_keyword", "16GB")
     brand_keywords = config.get("brand_keywords", [])

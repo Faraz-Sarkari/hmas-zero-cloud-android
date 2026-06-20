@@ -58,3 +58,26 @@ network:
   tor_proxy:
     http:  "socks5h://127.0.0.1:9050"
     https: "socks5h://127.0.0.1:9050"
+
+# ── Agent Selection ───────────────────────────────────────────────────────────
+# Comment out any agent you don't want to run. Defaults to all 6 if omitted.
+enabled_agents:
+  - data_extraction
+  - predictive_analytics
+  - decision_layer
+  - network_observability
+  - inventory_state_listener
+  - reacquisition
+
+# ── Scraper Selection ─────────────────────────────────────────────────────────
+# List scraper filenames to enable, or use "all" to load everything in scrapers/
+enabled_scrapers: "all"
+
+# How often the Decision Layer wakes to check if it's time to send the advisory (seconds)
+advisory_check_interval_seconds: 1800
+
+# ── Alert Behaviour ───────────────────────────────────────────────────────────
+urgent_repeat_count: 10             # How many times to repeat urgent alerts
+urgent_repeat_interval_seconds: 120 # Gap between urgent repeats (seconds)
+vibrate_normal: "500,200,500"       # Vibration pattern for routine notifications
+vibrate_urgent: "1000,500,1000"     # Vibration pattern for urgent alerts
