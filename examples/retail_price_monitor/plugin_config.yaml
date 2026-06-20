@@ -18,3 +18,8 @@ tiers:
     label: "VERY CLOSE to target"
   - max_offset: 5000
     label: "Getting close"
+expected_keywords:
+  - "RTX 5060 Ti"
+  - "16GB"
+max_price_drop_pct: 0.35
+max_source_deviation_pct: 0.30

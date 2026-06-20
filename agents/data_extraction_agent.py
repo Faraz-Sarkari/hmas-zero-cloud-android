@@ -23,6 +23,8 @@ from datetime import datetime
 from typing import Callable, List, Optional, Tuple
 
 import requests
+from shared.validator import validate_result, find_outlier_sources
+from shared.notifier import send_notification
 
 
 # ------------------------------------------------------------------ #
@@ -152,17 +154,56 @@ class DataExtractionAgent:
             try:
                 found = scraper(self.session, self.config)
                 if found:
-                    for item in found:
-                        name, price, source, url = item
-                        log_result(self.log_path, price, source, {"name": name, "url": url})
                     results.extend(found)
             except Exception as e:
                 print(f"[agent] Scraper error: {e}")
 
         print(f"[agent] Found {len(results)} result(s) this cycle.")
 
+        outlier_sources = find_outlier_sources(
+            results, self.config.get("max_source_deviation_pct", 0.30)
+        )
+        recent_prices = self._load_recent_prices()
+        expected_keywords = self.config.get("expected_keywords", [])
+
+        for name, price, source, url in results:
+            is_valid, reasons = validate_result(
+                name, price, source,
+                recent_prices=recent_prices,
+                expected_keywords=expected_keywords,
+                outlier_sources=outlier_sources,
+                max_drop_pct=self.config.get("max_price_drop_pct", 0.35),
+            )
+
+            extra = {"name": name, "url": url}
+            if not is_valid:
+                extra["suspicious"] = True
+                extra["flags"] = reasons
+                warning = (
+                    f"⚠️ Suspicious result flagged from {source}:\n"
+                    f"{name} — ₹{price:,.0f}\n"
+                    f"Reason(s): {'; '.join(reasons)}"
+                )
+                print(f"[agent] {warning}")
+                send_notification("Validation Warning", warning)
+
+            log_result(self.log_path, price, source, extra)
+
         if self.on_results:
             self.on_results(results)
+
+    def _load_recent_prices(self, window: int = 10) -> List[float]:
+        """Loads the last `window` prices from the log for anomaly comparison."""
+        import json
+        log_path = os.path.expanduser(self.log_path)
+        if not os.path.exists(log_path):
+            return []
+        try:
+            with open(log_path, "r") as f:
+                data = json.load(f)
+            return [d["price"] for d in data[-window:] if not d.get("suspicious")]
+        except Exception:
+            return []
 
     def start(self):
         """Schedule recurring checks and run the first one immediately."""
