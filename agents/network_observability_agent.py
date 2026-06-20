@@ -11,6 +11,8 @@ import os
 import subprocess
 
 import requests
+from stem import Signal
+from stem.control import Controller
 
 from shared.logger import get_logger
 from shared.notifier import send_notification
@@ -24,6 +26,20 @@ def is_tor_alive(host: str = "127.0.0.1", port: int = 9050) -> bool:
         s.close()
         return True
     except Exception:
+        return False
+
+
+def request_new_tor_circuit(password: str = None) -> bool:
+    """Requests a fresh Tor circuit (new exit IP) without a full restart."""
+    password = password or os.environ.get("TOR_CONTROL_PASSWORD", "changeme")
+    try:
+        with Controller.from_port(port=9051) as controller:
+            controller.authenticate(password=password)
+            controller.signal(Signal.NEWNYM)
+        time.sleep(5)
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to request new Tor circuit: {e}")
         return False
 
 
@@ -58,6 +74,11 @@ def run_network_check(config: dict) -> None:
         proxies = {}
 
     unreachable = [d for d in domains if not check_domain(d, proxies)]
+
+    if unreachable and use_tor:
+        logger.warning(f"Unreachable via current circuit: {unreachable}. Requesting new Tor circuit...")
+        if request_new_tor_circuit():
+            unreachable = [d for d in unreachable if not check_domain(d, proxies)]
 
     if unreachable:
         msg = "Unreachable sites: " + ", ".join(unreachable)
