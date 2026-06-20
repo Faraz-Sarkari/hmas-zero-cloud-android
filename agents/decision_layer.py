@@ -42,7 +42,7 @@ def compute_recommendation(data: list, target: float, item_label: str = "item") 
     if len(data) < 5:
         return "WAIT — Not enough price history yet to form a confident recommendation."
 
-    recent = data[-10:] if len(data) >= 10 else data
+    recent = data[-50:] if len(data) >= 50 else data
     prices = [d["price"] for d in recent]
     latest = prices[-1]
     average = sum(prices) / len(prices)

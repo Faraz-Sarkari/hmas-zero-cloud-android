@@ -69,10 +69,18 @@ def fetch_page(url: str, session: requests.Session) -> str:
 
 
 def is_in_stock(html: str, oos_markers: list) -> bool:
+    """
+    Checks visible page text only — strips scripts/styles first to avoid
+    false positives from hidden metadata or historical references to OOS state.
+    """
     if not html:
         return False
-    lowered = html.lower()
-    return not any(marker in lowered for marker in oos_markers)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "meta", "head"]):
+        tag.decompose()
+    visible = soup.get_text(separator=" ").lower()
+    return not any(marker in visible for marker in oos_markers)
 
 
 # ------------------------------------------------------------------ #

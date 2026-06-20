@@ -5,6 +5,7 @@ Compatible with any Termux/Android deployment path.
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 
 # Resolve project root dynamically — works regardless of where the repo is cloned
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +24,7 @@ def get_logger(agent_name: str, level: int = logging.INFO) -> logging.Logger:
 
     Returns:
         A Logger instance writing to both console and logs/<agent_name>.log
+        Log files rotate at 1 MB, keeping the last 3 backups.
     """
     os.makedirs(LOG_DIR, exist_ok=True)
     log_path = os.path.join(LOG_DIR, f"{agent_name}.log")
@@ -35,7 +37,12 @@ def get_logger(agent_name: str, level: int = logging.INFO) -> logging.Logger:
             "%(asctime)s | %(name)s | %(levelname)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
-        file_handler = logging.FileHandler(log_path)
+
+        file_handler = RotatingFileHandler(
+            log_path,
+            maxBytes=1 * 1024 * 1024,  # 1 MB
+            backupCount=3,
+        )
         file_handler.setFormatter(formatter)
 
         console_handler = logging.StreamHandler()
