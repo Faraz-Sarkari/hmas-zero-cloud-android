@@ -11,6 +11,12 @@ def scrape(session, config):
     secondary = config.get("filter_keyword_2", "5060 Ti")
     brand_keywords = config.get("brand_keywords", [])
     results = []
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-IN,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+    })
     try:
         response = fetch_with_retry(session, URL)
         if response is None:
