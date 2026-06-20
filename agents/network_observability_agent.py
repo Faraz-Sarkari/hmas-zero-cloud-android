@@ -39,6 +39,7 @@ def run_network_check(config: dict) -> None:
     use_tor = config.get("network", {}).get("use_tor", False)
     domains = config.get("monitored_domains", [])
 
+    import subprocess
     if use_tor:
         alive = is_tor_alive()
         logger.info(f"Tor alive: {alive}")
@@ -71,7 +72,7 @@ def main(config: dict) -> None:
 
 if __name__ == "__main__":
     import yaml
-    config_path = os.path.join(os.path.dirname(__file__), "../user_config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "../config/user_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     main(config)
