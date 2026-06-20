@@ -24,4 +24,9 @@ jobs:
         run: find . -name "*.py" -not -path "./.git/*" | xargs python -m py_compile
 
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short
+        run: |
+          if [ -d "tests" ] && [ "$(ls -A tests/)" ]; then
+            python -m pytest tests/ -v --tb=short
+          else
+            echo "No tests yet — skipping"
+          fi
